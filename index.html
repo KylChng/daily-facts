@@ -63,13 +63,13 @@
   }
   nav.tabs button{
     flex:1;
-    padding:9px 4px;
+    padding:9px 2px;
     background:none;
     border:none;
     border-radius:999px;
     font-family:'Poppins',sans-serif;
     font-weight:600;
-    font-size:13.5px;
+    font-size:12px;
     color:var(--muted);
     cursor:pointer;
   }
@@ -233,6 +233,11 @@
   }
   .analyzing{font-size:13px;color:var(--peri);margin-top:8px;}
   .result-box{margin-top:12px;text-align:left;}
+
+  .history-day{border-radius:14px;border:1.5px solid #2C3240;padding:12px 14px;margin-bottom:10px;background:var(--surface2);}
+  .history-day .hdate{font-weight:700;font-size:14px;color:var(--white);}
+  .history-day .hstats{font-family:'Space Mono',monospace;font-size:12px;color:var(--teal);margin-top:4px;}
+  .history-day .hworkouts{font-size:12px;color:var(--peri);margin-top:4px;}
 </style>
 </head>
 <body>
@@ -246,6 +251,7 @@
     <button data-tab="setup" class="active">Setup</button>
     <button data-tab="log">Log</button>
     <button data-tab="dash">Dashboard</button>
+    <button data-tab="history">History</button>
   </nav>
 
   <!-- SETUP -->
@@ -346,6 +352,19 @@
     <div class="card" id="bmiCard"></div>
     <div class="card" id="targetsCard"></div>
     <div class="card" id="suggestCard"></div>
+  </div>
+
+  <!-- HISTORY -->
+  <div class="panel" id="panel-history">
+    <div class="card">
+      <h2>Your <span class="accent">Data</span></h2>
+      <div class="note" style="margin-top:0;">Everything here lives only in this browser on this device — nothing's synced to the cloud. Export a backup regularly so you don't lose it if you clear browser data or switch phones.</div>
+      <button class="action ghost" id="exportBtn">⬇ Export backup (.json)</button>
+    </div>
+    <div class="card">
+      <h2>Past <span class="accent">Days</span></h2>
+      <div id="historyList"></div>
+    </div>
   </div>
 </div>
 
@@ -760,28 +779,39 @@ function renderDashboard(){
     `;
 
     const loc = document.getElementById('locationSelect').value || Object.keys(FOOD_DB)[0];
-    const pcosOn = state.profile.pcos === 'on';
-    const giScore = {low:0, med:1, high:2};
-    const options = (FOOD_DB[loc]||[]).filter(d=> d.cal <= (calRem+150) && calRem > 50);
-    if(pcosOn){
-      options.sort((a,b)=> giScore[a.gi]-giScore[b.gi] || b.protein-a.protein);
-    } else {
-      options.sort((a,b)=> b.protein - a.protein);
-    }
-    const top = options.slice(0,3);
-    suggestCard.innerHTML = `<h2>Suggested <span class="accent">Next Meal</span> <span style="font-size:12px;color:var(--muted);font-weight:400;">— ${loc}</span></h2>`;
-    if(calRem <= 50){
-      suggestCard.innerHTML += `<div class="note">You've hit (or nearly hit) today's calorie target. If you're still hungry, lean toward protein + veg over carbs.</div>`;
-    } else if(top.length === 0){
-      suggestCard.innerHTML += `<div class="empty">Nothing in this location's list fits your remaining budget — try a lighter/smaller option, or switch location above.</div>`;
-    } else {
-      top.forEach(d=>{
-        const giNote = pcosOn ? ` · <span style="color:${d.gi==='low'?'var(--teal)':d.gi==='high'?'var(--coral)':'var(--peri)'}">${d.gi} GI</span>` : '';
-        suggestCard.innerHTML += `<div class="suggest-card"><div class="name">${d.name}</div><div class="why">${d.cal} cal · ${d.protein}g protein${giNote} — closes ${Math.round((d.protein/Math.max(protRem,1))*100)}% of your remaining protein gap</div></div>`;
-      });
-    }
-    suggestCard.innerHTML += `<div class="note">Macros are estimates based on typical portions, not lab-measured. Change location in the Log tab to switch the suggestion pool.</div>`;
+    renderSuggestions(loc, calRem, protRem);
   }
+}
+
+function shuffleArray(arr){
+  const a = arr.slice();
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
+
+function renderSuggestions(loc, calRem, protRem){
+  const suggestCard = document.getElementById('suggestCard');
+  const pcosOn = state.profile.pcos === 'on';
+  const eligible = (FOOD_DB[loc]||[]).filter(d=> d.cal <= (calRem+150));
+  const shown = shuffleArray(eligible).slice(0,10);
+  suggestCard.innerHTML = `<h2>Suggested <span class="accent">Next Meal</span> <span style="font-size:12px;color:var(--muted);font-weight:400;">— ${loc}</span></h2>`;
+  if(calRem <= 50){
+    suggestCard.innerHTML += `<div class="note">You've hit (or nearly hit) today's calorie target. If you're still hungry, lean toward protein + veg over carbs.</div>`;
+  } else if(shown.length === 0){
+    suggestCard.innerHTML += `<div class="empty">Nothing in this location's list fits your remaining budget — try a lighter/smaller option, or switch location above.</div>`;
+  } else {
+    shown.forEach(d=>{
+      const giNote = pcosOn ? ` · <span style="color:${d.gi==='low'?'var(--teal)':d.gi==='high'?'var(--coral)':'var(--peri)'}">${d.gi} GI</span>` : '';
+      suggestCard.innerHTML += `<div class="suggest-card"><div class="name">${d.name}</div><div class="why">${d.cal} cal · ${d.protein}g protein${giNote} — closes ${Math.round((d.protein/Math.max(protRem,1))*100)}% of your remaining protein gap</div></div>`;
+    });
+  }
+  suggestCard.innerHTML += `<button class="action ghost" id="refreshSuggestBtn">🔀 Show different options</button>`;
+  suggestCard.innerHTML += `<div class="note">Macros are estimates based on typical portions, not lab-measured. Change location in the Log tab to switch the suggestion pool.</div>`;
+  const btn = document.getElementById('refreshSuggestBtn');
+  if(btn) btn.addEventListener('click', ()=> renderSuggestions(loc, calRem, protRem));
 }
 
 // ---------- EVENTS ----------
@@ -792,6 +822,7 @@ document.querySelectorAll('nav.tabs button').forEach(btn=>{
     document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
     document.getElementById('panel-'+btn.dataset.tab).classList.add('active');
     if(btn.dataset.tab === 'dash') renderDashboard();
+    if(btn.dataset.tab === 'history') renderHistory();
   });
 });
 
@@ -839,10 +870,54 @@ document.getElementById('addManualFood').addEventListener('click', ()=>{
   saveState(); render();
 });
 
+function renderHistory(){
+  const dates = new Set([...Object.keys(state.foodLog||{}), ...Object.keys(state.workoutLog||{})]);
+  const sorted = [...dates].sort((a,b)=> b.localeCompare(a));
+  const wrap = document.getElementById('historyList');
+  if(!sorted.length){ wrap.innerHTML = '<div class="empty">No history yet — once you log a few days, they\'ll show up here.</div>'; return; }
+  wrap.innerHTML = '';
+  sorted.forEach(dateKey=>{
+    const foods = state.foodLog[dateKey] || [];
+    const workouts = state.workoutLog[dateKey] || [];
+    if(!foods.length && !workouts.length) return;
+    const totals = foods.reduce((acc,i)=>({cal:acc.cal+Number(i.cal), protein:acc.protein+Number(i.protein)}), {cal:0,protein:0});
+    const [y,m,d] = dateKey.split('-').map(Number);
+    const label = new Date(y,m-1,d).toLocaleDateString('en-MY',{weekday:'short', day:'numeric', month:'short'});
+    const div = document.createElement('div');
+    div.className = 'history-day';
+    let html = `<div class="hdate">${label}${dateKey===todayKey()?' · Today':''}</div>`;
+    if(foods.length){
+      html += `<div class="hstats">${totals.cal} cal · ${totals.protein}g protein (${foods.length} item${foods.length>1?'s':''})</div>`;
+    }
+    if(workouts.length){
+      const wSummary = workouts.map(w=>{
+        const h=Math.floor(w.min/60), mm=w.min%60;
+        return `${w.sport} (${h?h+'h ':''}${mm}m)`;
+      }).join(', ');
+      html += `<div class="hworkouts">🏃 ${wSummary}</div>`;
+    }
+    div.innerHTML = html;
+    wrap.appendChild(div);
+  });
+}
+
+document.getElementById('exportBtn').addEventListener('click', ()=>{
+  const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `daily-facts-backup-${todayKey()}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+});
+
 loadState();
 if('serviceWorker' in navigator){
   navigator.serviceWorker.register('service-worker.js').catch(()=>{});
 }
+
 </script>
 </body>
 </html>
