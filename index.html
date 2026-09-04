@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#16CDB8">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Daily Facts">
+<title>Daily Facts — Kylie's Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0D0F13;
+    --surface:#171B22;
+    --surface2:#1E232C;
+    --teal:#16CDB8;
+    --teal-dim:#0E9384;
+    --peri:#A6ABF5;
+    --peri-dim:#7278D9;
+    --white:#F3F4FA;
+    --muted:#8A8FA3;
+    --coral:#FF6B6B;
+    --radius:18px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--white);
+    font-family:'Poppins',sans-serif;
+    font-size:15px;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  .app{max-width:480px;margin:0 auto;padding:16px 14px 60px;}
+  header.top{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:6px 4px 16px;
+  }
+  header.top h1{
+    font-weight:800;
+    font-size:24px;
+    margin:0;
+    color:var(--teal);
+    letter-spacing:-0.01em;
+  }
+  header.top span{
+    font-family:'Space Mono',monospace;
+    font-size:11px;
+    color:var(--muted);
+  }
+  nav.tabs{
+    display:flex;
+    background:var(--surface);
+    border-radius:999px;
+    padding:4px;
+    margin-bottom:16px;
+    gap:2px;
+  }
+  nav.tabs button{
+    flex:1;
+    padding:9px 4px;
+    background:none;
+    border:none;
+    border-radius:999px;
+    font-family:'Poppins',sans-serif;
+    font-weight:600;
+    font-size:13.5px;
+    color:var(--muted);
+    cursor:pointer;
+  }
+  nav.tabs button.active{background:var(--teal);color:#0A0B0D;}
+
+  .panel{display:none;}
+  .panel.active{display:block;}
+
+  .card{
+    background:var(--surface);
+    border-radius:var(--radius);
+    padding:18px 18px 20px;
+    margin-bottom:16px;
+    border:1px solid #262B35;
+  }
+  .card h2{
+    font-weight:700;
+    font-size:18px;
+    margin:0 0 12px;
+    color:var(--white);
+    display:flex;align-items:center;gap:8px;
+  }
+  .card h2 .accent{color:var(--teal);}
+  .card h3{
+    font-weight:600;
+    font-size:13px;
+    text-transform:uppercase;
+    letter-spacing:0.04em;
+    margin:16px 0 8px;
+    color:var(--peri);
+  }
+  .row{
+    display:flex;justify-content:space-between;align-items:baseline;
+    padding:8px 0;
+    border-bottom:1px solid #262B35;
+    gap:10px;
+  }
+  .row:last-child{border-bottom:none;}
+  .row .label{font-size:14px;color:var(--white);}
+  .row .sub{padding-left:14px;font-size:12.5px;color:var(--muted);}
+  .row .val{font-family:'Space Mono',monospace;font-weight:700;font-size:15px;white-space:nowrap;color:var(--white);}
+  .row .val.small{font-size:13px;font-weight:400;color:var(--muted);}
+  .divider{border:none;border-top:1px solid #2C3240;margin:12px 0;}
+
+  label{display:block;font-weight:600;font-size:12.5px;text-transform:uppercase;letter-spacing:0.03em;color:var(--muted);margin:12px 0 5px;}
+  input,select{
+    width:100%;padding:10px 12px;
+    border-radius:12px;
+    border:1.5px solid #2C3240;
+    background:var(--surface2);
+    font-family:'Poppins',sans-serif;
+    font-size:14.5px;
+    color:var(--white);
+  }
+  input:focus,select:focus{outline:2px solid var(--teal);border-color:var(--teal);}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+
+  button.action{
+    font-family:'Poppins',sans-serif;
+    font-weight:700;
+    font-size:14.5px;
+    background:var(--teal);
+    color:#0A0B0D;
+    border:none;
+    border-radius:12px;
+    padding:12px 14px;
+    width:100%;
+    margin-top:14px;
+    cursor:pointer;
+  }
+  button.action:active{opacity:0.85;}
+  button.action.ghost{
+    background:none;
+    color:var(--peri);
+    border:1.5px solid var(--peri-dim);
+  }
+  button.action.small{width:auto;margin-top:0;padding:8px 14px;font-size:13px;}
+
+  .toggle-row{display:flex;background:var(--surface2);border-radius:12px;padding:3px;gap:2px;}
+  .toggle-row button{
+    flex:1;padding:8px 4px;background:none;border:none;border-radius:9px;
+    font-family:'Poppins',sans-serif;font-size:12.5px;font-weight:600;color:var(--muted);
+    cursor:pointer;
+  }
+  .toggle-row button.sel{background:var(--peri);color:#0A0B0D;}
+
+  .pill{
+    display:inline-block;
+    font-family:'Space Mono',monospace;
+    font-size:10.5px;
+    padding:3px 8px;
+    border-radius:999px;
+    background:var(--surface2);
+    color:var(--muted);
+    margin-left:6px;
+  }
+  .pill.over{background:var(--coral);color:#1a0a0a;}
+  .pill.ok{background:var(--teal);color:#0A0B0D;}
+
+  .workout-item, .food-item{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:9px 0;border-bottom:1px solid #262B35;font-size:13.5px;
+  }
+  .workout-item:last-child,.food-item:last-child{border-bottom:none;}
+  .del{
+    background:none;border:1px solid #3A4050;color:var(--muted);border-radius:8px;
+    font-family:'Space Mono',monospace;font-size:10.5px;
+    padding:3px 8px;cursor:pointer;
+  }
+
+  .locrow{display:flex;gap:8px;align-items:stretch;}
+  .locrow select{flex:1;}
+  #locStatus{font-size:11.5px;color:var(--muted);margin-top:6px;min-height:14px;}
+
+  .quickpick{
+    display:flex;flex-direction:column;gap:8px;margin-top:10px;
+  }
+  .dish{
+    display:flex;justify-content:space-between;align-items:center;
+    border-radius:14px;border:1.5px solid #2C3240;padding:10px 12px;background:var(--surface2);
+    cursor:pointer;
+  }
+  .dish:active{border-color:var(--teal);}
+  .dish .name{font-size:13.5px;font-weight:500;flex:1;color:var(--white);}
+  .dish .macro{font-family:'Space Mono',monospace;font-size:11px;color:var(--teal);white-space:nowrap;margin-left:8px;}
+
+  .note{font-size:12px;color:var(--muted);margin-top:10px;line-height:1.5;}
+  .empty{font-size:13px;color:var(--muted);padding:10px 0;}
+
+  .bignum{font-family:'Space Mono',monospace;font-weight:700;font-size:32px;line-height:1;color:var(--teal);}
+  .biglabel{font-weight:600;font-size:12.5px;text-transform:uppercase;letter-spacing:0.03em;color:var(--muted);}
+  .statgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;text-align:center;padding:10px 0 4px;}
+
+  .suggest-card{border-radius:14px;border:1.5px solid #2C3240;padding:12px;margin-top:8px;background:var(--surface2);}
+  .suggest-card .name{font-weight:600;font-size:14px;color:var(--white);}
+  .suggest-card .why{font-size:12px;color:var(--teal);margin-top:3px;}
+
+  .photobox{
+    border:1.5px dashed var(--peri-dim);border-radius:14px;padding:16px;text-align:center;margin-top:10px;
+  }
+  .photobox img{max-width:100%;border-radius:10px;margin-top:8px;max-height:180px;object-fit:cover;}
+  .photobox input[type=file]{display:none;}
+  .photo-label{
+    display:inline-block;background:var(--peri);color:#0A0B0D;padding:10px 18px;
+    border-radius:12px;font-weight:700;font-size:13.5px;cursor:pointer;
+  }
+  .analyzing{font-size:13px;color:var(--peri);margin-top:8px;}
+  .result-box{margin-top:12px;text-align:left;}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <h1>Daily Facts</h1>
+    <span id="todayDate"></span>
+  </header>
+
+  <nav class="tabs">
+    <button data-tab="setup" class="active">Setup</button>
+    <button data-tab="log">Log</button>
+    <button data-tab="dash">Dashboard</button>
+  </nav>
+
+  <!-- SETUP -->
+  <div class="panel active" id="panel-setup">
+    <div class="card">
+      <h2>Your Profile</h2>
+      <div class="grid2">
+        <div><label>Height (cm)</label><input type="number" id="p_height" placeholder="160"></div>
+        <div><label>Weight (kg)</label><input type="number" id="p_weight" placeholder="55"></div>
+      </div>
+      <div class="grid2">
+        <div><label>Age</label><input type="number" id="p_age" placeholder="30"></div>
+        <div>
+          <label>Sex (for BMR calc)</label>
+          <div class="toggle-row" id="p_sex">
+            <button data-val="female" class="sel">Female</button>
+            <button data-val="male">Male</button>
+          </div>
+        </div>
+      </div>
+
+      <h3>BMI Classification</h3>
+      <div class="toggle-row" id="p_bmiClass">
+        <button data-val="asian" class="sel">Asian cutoffs</button>
+        <button data-val="standard">Standard (WHO)</button>
+      </div>
+      <div class="note">Asian cutoffs (WHO Asia-Pacific): overweight from 23, obese from 27.5 — lower than the standard 25/30 scale, since health risk rises earlier at the same BMI for most Asian populations.</div>
+
+      <h3>Goal</h3>
+      <div class="toggle-row" id="p_goal">
+        <button data-val="loss" class="sel">Fat loss</button>
+        <button data-val="maintain">Maintain</button>
+        <button data-val="gain">Muscle gain</button>
+      </div>
+
+      <h3>PCOS-Aware Mode</h3>
+      <div class="toggle-row" id="p_pcos">
+        <button data-val="on" class="sel">On</button>
+        <button data-val="off">Off</button>
+      </div>
+      <div class="note">When on: deficit is gentler (15% vs 18%), protein target runs higher, and every dish is tagged by glycemic load (low/med/high) — suggestions favour lower-GI + high-protein over just chasing protein numbers. This follows general insulin-resistance nutrition principles, not a plan from your doctor — treat it as a helpful default, not a replacement for one.</div>
+
+      <button class="action" id="saveProfile">Save Profile</button>
+    </div>
+  </div>
+
+  <!-- LOG -->
+  <div class="panel" id="panel-log">
+    <div class="card">
+      <h2>This Week's <span class="accent">Activity</span></h2>
+      <div class="grid3">
+        <div><label>Sport</label><input type="text" id="w_sport" placeholder="Pickleball"></div>
+        <div><label>Minutes</label><input type="number" id="w_min" placeholder="60"></div>
+        <div>
+          <label>Intensity</label>
+          <select id="w_intensity">
+            <option value="1">Low</option>
+            <option value="2" selected>Medium</option>
+            <option value="3">High</option>
+          </select>
+        </div>
+      </div>
+      <button class="action ghost" id="addWorkout">+ Add to this week</button>
+      <div id="workoutList" style="margin-top:10px;"></div>
+    </div>
+
+    <div class="card">
+      <h2>Today's <span class="accent">Food</span></h2>
+      <label>Location</label>
+      <div class="locrow">
+        <select id="locationSelect"></select>
+        <button class="action small ghost" id="detectLoc" type="button">📍 Detect</button>
+      </div>
+      <div id="locStatus"></div>
+      <div class="quickpick" id="quickPickList"></div>
+
+      <h3>Snap a Photo</h3>
+      <div class="photobox" id="photoboxWrap">
+        <label class="photo-label" for="photoInput">📷 Upload food photo</label>
+        <input type="file" id="photoInput" accept="image/*" capture="environment">
+        <div id="photoPreviewWrap"></div>
+        <div id="photoStatus"></div>
+        <div id="photoResult" class="result-box"></div>
+      </div>
+      <div class="note" id="photoDisabledNote" style="display:none;">Photo estimation isn't available in this standalone app — it needs Claude's backend to read the image. Use the quick-pick list or manual entry below instead, or ask Claude directly in a chat when you want a photo estimated.</div>
+
+      <h3>Manual Entry</h3>
+      <div class="grid3">
+        <div><label>Item</label><input type="text" id="f_name" placeholder="Chicken chop"></div>
+        <div><label>Cal</label><input type="number" id="f_cal" placeholder="450"></div>
+        <div><label>Protein (g)</label><input type="number" id="f_protein" placeholder="30"></div>
+      </div>
+      <button class="action ghost" id="addManualFood">+ Add manual item</button>
+
+      <h3>Logged Today</h3>
+      <div id="foodList"></div>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div class="panel" id="panel-dash">
+    <div class="card" id="bmiCard"></div>
+    <div class="card" id="targetsCard"></div>
+    <div class="card" id="suggestCard"></div>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY = 'kylie-nutrition-data';
+let state = {
+  profile: { height:null, weight:null, age:null, sex:'female', bmiClass:'asian', goal:'loss', pcos:'on' },
+  workouts: [],
+  foodLog: {}
+};
+
+function todayKey(){ return new Date().toISOString().slice(0,10); }
+
+// ---------- FOOD DATABASE ----------
+// gi = rough glycemic-load bucket for the whole plate (portion + carb type), not a lab GI value.
+const FOOD_DB = {
+  "Bangsar (Telawi)": [
+    {name:"Veranda South Indian — Mutton Ghee Roast + rice", cal:620, protein:36, gi:"med"},
+    {name:"The Peranakan — Ayam Buah Keluak + rice", cal:600, protein:30, gi:"med"},
+    {name:"The Hungry Tapir (vegan) — Ayam Gepuk Burger", cal:550, protein:22, gi:"med"},
+    {name:"CHARA — Wood-fired Pomfret Fish", cal:480, protein:42, gi:"low"},
+    {name:"ROOST — Chimichurri Chicken + charred cabbage", cal:520, protein:44, gi:"low"},
+    {name:"Tsuka — Nasi Kerabu Ayam Percik", cal:560, protein:28, gi:"high"},
+    {name:"La Stellar Maison — Duck Confit + truffle pasta", cal:700, protein:34, gi:"high"},
+  ],
+  "TTDI (main)": [
+    {name:"Corks Out — Grilled Snapper & King Prawn", cal:650, protein:45, gi:"low"},
+    {name:"Yarl — Masala Dosai (veg)", cal:480, protein:12, gi:"high"},
+    {name:"Leen's Middle East Kitchen — Kebab Khashkhash + rice", cal:620, protein:38, gi:"med"},
+    {name:"Warong Din — Nasi Daging", cal:650, protein:30, gi:"high"},
+    {name:"Serambi Cafe — Buttermilk Schnitzel Chicken + fries", cal:750, protein:40, gi:"med"},
+    {name:"Sisters Place — Char Kuey Teow", cal:600, protein:18, gi:"high"},
+    {name:"Koji — Unagi Claypot Rice (per person, shared)", cal:550, protein:28, gi:"med"},
+  ],
+  "Subang Jaya (SS15/SS19)": [
+    {name:"Rewang Signature — Ayam Gepuk + rice", cal:620, protein:32, gi:"med"},
+    {name:"Santap Kopitiam — Nasi Lemak Sambal Sotong", cal:580, protein:26, gi:"high"},
+    {name:"SHI GUANG Kopitiam — Curry Mee", cal:560, protein:20, gi:"high"},
+    {name:"JIBRIL SS15 — Salted Egg Butter Chicken + rice", cal:780, protein:34, gi:"med"},
+    {name:"TalkCrab — Seafood platter (per person, est.)", cal:600, protein:40, gi:"low"},
+    {name:"Hotzilla — Chicken Tenders set", cal:700, protein:32, gi:"med"},
+    {name:"Eleven Moon Cafe — Shio pan + coffee (light)", cal:380, protein:8, gi:"high"},
+  ],
+  "One Utama": [
+    {name:"Kampung Dining — Pork Ribs Berempah Nasi Lemak", cal:750, protein:36, gi:"high"},
+    {name:"K Fry Urban Korean — Yangnyeom Chicken set", cal:800, protein:40, gi:"med"},
+    {name:"Shin Jjajang Budae Jjigae — Bibimbap", cal:620, protein:28, gi:"med"},
+    {name:"Wanhoi Noodle House — Wanton Noodle", cal:520, protein:24, gi:"high"},
+    {name:"Rich Kopitiam — Curry Chicken + Fried Rice", cal:640, protein:28, gi:"high"},
+    {name:"Robataya Izakaya — Grilled Teriyaki Chicken set", cal:600, protein:38, gi:"med"},
+    {name:"Banglo289 — Home-style set (est.)", cal:580, protein:26, gi:"med"},
+  ],
+  "Atria Mall (Damansara Jaya)": [
+    {name:"Moim Korean — Bibimbap", cal:610, protein:28, gi:"med"},
+    {name:"Moim Korean — BBQ Set (meat + banchan)", cal:750, protein:45, gi:"low"},
+    {name:"Mr Fish — Seafood Noodle Soup", cal:480, protein:30, gi:"med"},
+    {name:"Shaang Cuisine — Set for 2 (share)", cal:550, protein:26, gi:"med"},
+    {name:"Antipodean — Shredded Chicken Sandwich", cal:560, protein:34, gi:"med"},
+    {name:"House of Taipei — Braised Pork Rice", cal:640, protein:24, gi:"high"},
+    {name:"QHouse — Grilled Fish + rice", cal:490, protein:32, gi:"med"},
+  ],
+  "Mamak / Kopitiam (general)": [
+    {name:"Maggi goreng telur", cal:520, protein:14, gi:"high"},
+    {name:"Roti canai + dhal (2pc)", cal:460, protein:9, gi:"high"},
+    {name:"Nasi lemak biasa + egg", cal:500, protein:12, gi:"high"},
+    {name:"Mee goreng mamak + chicken", cal:600, protein:22, gi:"high"},
+    {name:"Chicken chop (kopitiam style)", cal:680, protein:38, gi:"med"},
+    {name:"Half-boiled eggs (2) + toast", cal:320, protein:14, gi:"med"},
+  ],
+  "Western / Cafe (general)": [
+    {name:"Grilled chicken breast + salad", cal:420, protein:45, gi:"low"},
+    {name:"Salmon + veg bowl", cal:480, protein:40, gi:"low"},
+    {name:"Beef burger + fries", cal:850, protein:35, gi:"high"},
+    {name:"Caesar salad + chicken", cal:450, protein:32, gi:"low"},
+  ],
+  "Home-cooked": [
+    {name:"Steamed fish + rice + veg", cal:450, protein:36, gi:"med"},
+    {name:"Stir-fry chicken + rice", cal:520, protein:34, gi:"med"},
+    {name:"Egg fried rice + veg", cal:480, protein:16, gi:"high"},
+    {name:"Tofu + veg stir-fry + rice", cal:420, protein:20, gi:"med"},
+    {name:"Grilled chicken + sweet potato", cal:440, protein:42, gi:"low"},
+  ],
+  "Travelling / Other": [
+    {name:"Airport/hotel grilled protein + veg (est.)", cal:500, protein:35, gi:"low"},
+    {name:"Convenience store sandwich + protein shake", cal:450, protein:28, gi:"med"},
+    {name:"Generic restaurant meal (est. average)", cal:600, protein:25, gi:"med"},
+  ]
+};
+
+// Known coordinates for geolocation matching
+const KNOWN_LOCATIONS = [
+  {name:"Bangsar (Telawi)", lat:3.1315, lng:101.6710},
+  {name:"TTDI (main)", lat:3.1522, lng:101.6204},
+  {name:"Subang Jaya (SS15/SS19)", lat:3.0758, lng:101.5873},
+  {name:"One Utama", lat:3.1492, lng:101.6166},
+  {name:"Atria Mall (Damansara Jaya)", lat:3.1271, lng:101.6165},
+];
+
+// ---------- STORAGE ----------
+// Storage adapter: uses Claude artifact storage when available (window.storage),
+// falls back to browser localStorage when running standalone (e.g. GitHub Pages).
+const IN_CLAUDE_ENV = typeof window.storage !== 'undefined';
+const storageAdapter = {
+  async get(key){
+    if(IN_CLAUDE_ENV) return window.storage.get(key, false);
+    const v = localStorage.getItem(key);
+    return v ? {value:v} : null;
+  },
+  async set(key, val){
+    if(IN_CLAUDE_ENV) return window.storage.set(key, val, false);
+    localStorage.setItem(key, val);
+    return {value: val};
+  }
+};
+
+async function loadState(){
+  try{
+    const res = await storageAdapter.get(STORAGE_KEY);
+    if(res && res.value){ state = Object.assign(state, JSON.parse(res.value)); }
+  }catch(e){}
+  render();
+}
+async function saveState(){
+  try{ await storageAdapter.set(STORAGE_KEY, JSON.stringify(state)); }
+  catch(e){ console.error('save failed', e); }
+}
+
+// ---------- CALCS ----------
+function bmi(){
+  const h = state.profile.height/100, w = state.profile.weight;
+  if(!h || !w) return null;
+  return w/(h*h);
+}
+function bmiCategory(val){
+  const asian = state.profile.bmiClass === 'asian';
+  if(val < 18.5) return {label:'Underweight', tone:''};
+  if(asian){
+    if(val < 23) return {label:'Normal', tone:'ok'};
+    if(val < 27.5) return {label:'Overweight', tone:'over'};
+    return {label:'Obese', tone:'over'};
+  }else{
+    if(val < 25) return {label:'Normal', tone:'ok'};
+    if(val < 30) return {label:'Overweight', tone:'over'};
+    return {label:'Obese', tone:'over'};
+  }
+}
+function bmr(){
+  const {height,weight,age,sex} = state.profile;
+  if(!height||!weight||!age) return null;
+  const base = 10*weight + 6.25*height - 5*age;
+  return sex === 'male' ? base+5 : base-161;
+}
+function weeklyActivityMultiplier(){
+  const points = state.workouts.reduce((sum,w)=> sum + (w.min * w.intensity), 0);
+  if(points < 300) return 1.2;
+  if(points < 700) return 1.375;
+  if(points < 1300) return 1.55;
+  if(points < 2000) return 1.725;
+  return 1.9;
+}
+function tdee(){ const b = bmr(); return b ? b * weeklyActivityMultiplier() : null; }
+function calorieTarget(){
+  const t = tdee(); if(!t) return null;
+  const {goal, pcos} = state.profile;
+  const pcosOn = pcos === 'on';
+  if(goal === 'loss') return Math.round(t * (pcosOn ? 0.85 : 0.82));
+  if(goal === 'gain') return Math.round(t * 1.1);
+  return Math.round(t);
+}
+function proteinTarget(){
+  const w = state.profile.weight; if(!w) return null;
+  const {goal, pcos} = state.profile;
+  const pcosOn = pcos === 'on';
+  let factor = goal === 'loss' ? 2.0 : goal === 'gain' ? 1.8 : 1.6;
+  if(pcosOn) factor += 0.2;
+  return Math.round(w * factor);
+}
+function todaysTotals(){
+  const items = state.foodLog[todayKey()] || [];
+  return items.reduce((acc,i)=>({cal:acc.cal+Number(i.cal), protein:acc.protein+Number(i.protein)}), {cal:0,protein:0});
+}
+
+// ---------- GEOLOCATION ----------
+function haversine(lat1,lng1,lat2,lng2){
+  const R=6371, toRad = d=>d*Math.PI/180;
+  const dLat = toRad(lat2-lat1), dLng = toRad(lng2-lng1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+document.getElementById('detectLoc').addEventListener('click', ()=>{
+  const status = document.getElementById('locStatus');
+  if(!navigator.geolocation){ status.textContent = "Geolocation isn't available in this browser — pick manually."; return; }
+  status.textContent = "Locating...";
+  navigator.geolocation.getCurrentPosition(
+    (pos)=>{
+      const {latitude, longitude} = pos.coords;
+      let nearest = null, nearestDist = Infinity;
+      KNOWN_LOCATIONS.forEach(loc=>{
+        const d = haversine(latitude, longitude, loc.lat, loc.lng);
+        if(d < nearestDist){ nearestDist = d; nearest = loc; }
+      });
+      if(nearest && nearestDist <= 1.5){
+        document.getElementById('locationSelect').value = nearest.name;
+        renderQuickPick();
+        status.textContent = `Matched: ${nearest.name} (${nearestDist.toFixed(2)}km away)`;
+      } else {
+        status.textContent = "No known location nearby — select manually below.";
+      }
+    },
+    (err)=>{
+      status.textContent = "Location permission denied or unavailable — select manually below.";
+    },
+    {timeout:8000}
+  );
+});
+
+// ---------- PHOTO ANALYSIS (Claude vision via artifact API) ----------
+document.getElementById('photoInput').addEventListener('change', async (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const previewWrap = document.getElementById('photoPreviewWrap');
+  const statusEl = document.getElementById('photoStatus');
+  const resultEl = document.getElementById('photoResult');
+  resultEl.innerHTML = '';
+  const reader = new FileReader();
+  reader.onload = async ()=>{
+    const dataUrl = reader.result;
+    previewWrap.innerHTML = `<img src="${dataUrl}">`;
+    statusEl.innerHTML = '<div class="analyzing">Analyzing photo…</div>';
+    const base64 = dataUrl.split(',')[1];
+    const mediaType = file.type || 'image/jpeg';
+    try{
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({
+          model: "claude-sonnet-4-6",
+          max_tokens: 500,
+          messages: [{
+            role: "user",
+            content: [
+              {type:"image", source:{type:"base64", media_type: mediaType, data: base64}},
+              {type:"text", text:"Identify the food/dish in this photo and estimate its calories and protein in grams, based on a typical single-serving portion visible in the image. Respond with ONLY raw JSON, no markdown fences, no preamble, in this exact shape: {\"name\":\"short dish name\",\"cal\":number,\"protein\":number,\"confidence\":\"low|medium|high\"}"}
+            ]
+          }]
+        })
+      });
+      const data = await response.json();
+      const textBlock = (data.content||[]).find(b=>b.type==='text');
+      let parsed;
+      try{
+        parsed = JSON.parse((textBlock.text||'').replace(/```json|```/g,'').trim());
+      }catch(parseErr){
+        statusEl.innerHTML = '<div class="note">Couldn\'t read a clean estimate from that photo — try manual entry instead.</div>';
+        return;
+      }
+      statusEl.innerHTML = '';
+      resultEl.innerHTML = `
+        <div class="note" style="margin-top:0;">AI estimate (${parsed.confidence||'medium'} confidence) — review and adjust before adding:</div>
+        <div class="grid3" style="margin-top:8px;">
+          <div><label>Item</label><input type="text" id="photo_name" value="${(parsed.name||'').replace(/"/g,'')}"></div>
+          <div><label>Cal</label><input type="number" id="photo_cal" value="${parsed.cal||0}"></div>
+          <div><label>Protein (g)</label><input type="number" id="photo_protein" value="${parsed.protein||0}"></div>
+        </div>
+        <button class="action" id="addPhotoFood">+ Add this to today's log</button>
+      `;
+      document.getElementById('addPhotoFood').addEventListener('click', ()=>{
+        const name = document.getElementById('photo_name').value.trim();
+        const cal = Number(document.getElementById('photo_cal').value);
+        const protein = Number(document.getElementById('photo_protein').value) || 0;
+        if(!name || !cal) return;
+        const key = todayKey();
+        if(!state.foodLog[key]) state.foodLog[key] = [];
+        state.foodLog[key].push({name, cal, protein});
+        saveState(); render();
+        resultEl.innerHTML = '<div class="note">Added ✓</div>';
+        previewWrap.innerHTML = '';
+        document.getElementById('photoInput').value = '';
+      });
+    }catch(err){
+      statusEl.innerHTML = '<div class="note">Photo analysis failed — try again, or use manual entry.</div>';
+    }
+  };
+  reader.readAsDataURL(file);
+});
+
+// ---------- RENDER ----------
+function render(){
+  document.getElementById('todayDate').textContent = new Date().toLocaleDateString('en-MY',{weekday:'short', day:'numeric', month:'short'});
+
+  document.getElementById('p_height').value = state.profile.height || '';
+  document.getElementById('p_weight').value = state.profile.weight || '';
+  document.getElementById('p_age').value = state.profile.age || '';
+  setToggle('p_sex', state.profile.sex);
+  setToggle('p_bmiClass', state.profile.bmiClass);
+  setToggle('p_goal', state.profile.goal);
+  setToggle('p_pcos', state.profile.pcos);
+
+  const wl = document.getElementById('workoutList');
+  wl.innerHTML = state.workouts.length ? '' : '<div class="empty">No workouts logged this week yet.</div>';
+  state.workouts.forEach(w=>{
+    const div = document.createElement('div');
+    div.className = 'workout-item';
+    const intensityLabel = w.intensity==1?'Low':w.intensity==2?'Med':'High';
+    div.innerHTML = `<span>${w.sport} — ${w.min} min · ${intensityLabel}</span>`;
+    const btn = document.createElement('button');
+    btn.className='del'; btn.textContent='remove';
+    btn.onclick = ()=>{ state.workouts = state.workouts.filter(x=>x.id!==w.id); saveState(); render(); };
+    div.appendChild(btn);
+    wl.appendChild(div);
+  });
+
+  const locSel = document.getElementById('locationSelect');
+  if(!locSel.dataset.built){
+    Object.keys(FOOD_DB).forEach(loc=>{
+      const opt = document.createElement('option');
+      opt.value = loc; opt.textContent = loc;
+      locSel.appendChild(opt);
+    });
+    locSel.dataset.built = '1';
+    locSel.addEventListener('change', renderQuickPick);
+  }
+  renderQuickPick();
+
+  const fl = document.getElementById('foodList');
+  const todayItems = state.foodLog[todayKey()] || [];
+  fl.innerHTML = todayItems.length ? '' : '<div class="empty">Nothing logged yet today.</div>';
+  todayItems.forEach((item, idx)=>{
+    const div = document.createElement('div');
+    div.className = 'food-item';
+    div.innerHTML = `<span>${item.name} <span style="color:var(--teal);font-family:'Space Mono',monospace;font-size:11px;">${item.cal} cal · ${item.protein}g</span></span>`;
+    const btn = document.createElement('button');
+    btn.className='del'; btn.textContent='remove';
+    btn.onclick = ()=>{ state.foodLog[todayKey()].splice(idx,1); saveState(); render(); };
+    div.appendChild(btn);
+    fl.appendChild(div);
+  });
+
+  renderDashboard();
+}
+
+function setToggle(groupId, val){
+  const group = document.getElementById(groupId);
+  [...group.children].forEach(btn=> btn.classList.toggle('sel', btn.dataset.val === val));
+}
+
+function renderQuickPick(){
+  const loc = document.getElementById('locationSelect').value || Object.keys(FOOD_DB)[0];
+  const list = document.getElementById('quickPickList');
+  list.innerHTML = '';
+  (FOOD_DB[loc]||[]).forEach(dish=>{
+    const div = document.createElement('div');
+    div.className = 'dish';
+    const giBadge = state.profile.pcos === 'on' ? `<span class="pill ${dish.gi==='low'?'ok':dish.gi==='high'?'over':''}" style="margin-left:6px;">${dish.gi} GI</span>` : '';
+    div.innerHTML = `<span class="name">${dish.name}${giBadge}</span><span class="macro">${dish.cal} cal · ${dish.protein}g P</span>`;
+    div.onclick = ()=>{
+      const key = todayKey();
+      if(!state.foodLog[key]) state.foodLog[key] = [];
+      state.foodLog[key].push({name:dish.name, cal:dish.cal, protein:dish.protein});
+      saveState(); render();
+    };
+    list.appendChild(div);
+  });
+}
+
+function renderDashboard(){
+  const bmiCard = document.getElementById('bmiCard');
+  const targetsCard = document.getElementById('targetsCard');
+  const suggestCard = document.getElementById('suggestCard');
+
+  const bmiVal = bmi();
+  if(!bmiVal){
+    bmiCard.innerHTML = '<h2>BMI</h2><div class="empty">Fill in your height & weight in Setup first.</div>';
+  } else {
+    const cat = bmiCategory(bmiVal);
+    bmiCard.innerHTML = `
+      <h2>BMI</h2>
+      <div class="statgrid">
+        <div><div class="bignum">${bmiVal.toFixed(1)}</div><div class="biglabel">Your BMI</div></div>
+        <div><div class="bignum" style="font-size:20px;padding-top:6px;color:var(--white);">${cat.label}<span class="pill ${cat.tone}">${state.profile.bmiClass==='asian'?'Asian scale':'WHO scale'}</span></div></div>
+      </div>
+    `;
+  }
+
+  const cals = calorieTarget(), prot = proteinTarget(), b = bmr(), t = tdee();
+  if(!cals){
+    targetsCard.innerHTML = '<h2>Today\'s Targets</h2><div class="empty">Complete Setup to see your targets.</div>';
+  } else {
+    const totals = todaysTotals();
+    const calRem = cals - totals.cal;
+    const protRem = prot - totals.protein;
+    targetsCard.innerHTML = `
+      <h2>Today's <span class="accent">Targets</span>${state.profile.pcos==='on'?'<span class="pill">PCOS-aware</span>':''}</h2>
+      <div class="row"><span class="label">BMR</span><span class="val small">${Math.round(b)} cal</span></div>
+      <div class="row"><span class="label">TDEE (incl. this week's activity)</span><span class="val small">${Math.round(t)} cal</span></div>
+      <hr class="divider">
+      <div class="row"><span class="label">Calorie target</span><span class="val">${cals}</span></div>
+      <div class="row"><span class="label sub">consumed today</span><span class="val small">${totals.cal}</span></div>
+      <div class="row"><span class="label sub">remaining</span><span class="val small" style="color:${calRem<0?'var(--coral)':'var(--teal)'}">${calRem}</span></div>
+      <hr class="divider">
+      <div class="row"><span class="label">Protein target (g)</span><span class="val">${prot}</span></div>
+      <div class="row"><span class="label sub">consumed today</span><span class="val small">${totals.protein}</span></div>
+      <div class="row"><span class="label sub">remaining</span><span class="val small" style="color:${protRem<0?'var(--coral)':'var(--teal)'}">${protRem}</span></div>
+    `;
+
+    const loc = document.getElementById('locationSelect').value || Object.keys(FOOD_DB)[0];
+    const pcosOn = state.profile.pcos === 'on';
+    const giScore = {low:0, med:1, high:2};
+    const options = (FOOD_DB[loc]||[]).filter(d=> d.cal <= (calRem+150) && calRem > 50);
+    if(pcosOn){
+      options.sort((a,b)=> giScore[a.gi]-giScore[b.gi] || b.protein-a.protein);
+    } else {
+      options.sort((a,b)=> b.protein - a.protein);
+    }
+    const top = options.slice(0,3);
+    suggestCard.innerHTML = `<h2>Suggested <span class="accent">Next Meal</span> <span style="font-size:12px;color:var(--muted);font-weight:400;">— ${loc}</span></h2>`;
+    if(calRem <= 50){
+      suggestCard.innerHTML += `<div class="note">You've hit (or nearly hit) today's calorie target. If you're still hungry, lean toward protein + veg over carbs.</div>`;
+    } else if(top.length === 0){
+      suggestCard.innerHTML += `<div class="empty">Nothing in this location's list fits your remaining budget — try a lighter/smaller option, or switch location above.</div>`;
+    } else {
+      top.forEach(d=>{
+        const giNote = pcosOn ? ` · <span style="color:${d.gi==='low'?'var(--teal)':d.gi==='high'?'var(--coral)':'var(--peri)'}">${d.gi} GI</span>` : '';
+        suggestCard.innerHTML += `<div class="suggest-card"><div class="name">${d.name}</div><div class="why">${d.cal} cal · ${d.protein}g protein${giNote} — closes ${Math.round((d.protein/Math.max(protRem,1))*100)}% of your remaining protein gap</div></div>`;
+      });
+    }
+    suggestCard.innerHTML += `<div class="note">Macros are estimates based on typical portions, not lab-measured. Change location in the Log tab to switch the suggestion pool.</div>`;
+  }
+}
+
+// ---------- EVENTS ----------
+document.querySelectorAll('nav.tabs button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+    document.getElementById('panel-'+btn.dataset.tab).classList.add('active');
+    if(btn.dataset.tab === 'dash') renderDashboard();
+  });
+});
+
+['p_sex','p_bmiClass','p_goal','p_pcos'].forEach(id=>{
+  document.getElementById(id).addEventListener('click', (e)=>{
+    if(e.target.tagName !== 'BUTTON') return;
+    setToggle(id, e.target.dataset.val);
+  });
+});
+
+document.getElementById('saveProfile').addEventListener('click', ()=>{
+  state.profile.height = Number(document.getElementById('p_height').value) || null;
+  state.profile.weight = Number(document.getElementById('p_weight').value) || null;
+  state.profile.age = Number(document.getElementById('p_age').value) || null;
+  state.profile.sex = document.querySelector('#p_sex .sel').dataset.val;
+  state.profile.bmiClass = document.querySelector('#p_bmiClass .sel').dataset.val;
+  state.profile.goal = document.querySelector('#p_goal .sel').dataset.val;
+  state.profile.pcos = document.querySelector('#p_pcos .sel').dataset.val;
+  saveState(); render();
+  document.querySelector('[data-tab="dash"]').click();
+});
+
+document.getElementById('addWorkout').addEventListener('click', ()=>{
+  const sport = document.getElementById('w_sport').value.trim();
+  const min = Number(document.getElementById('w_min').value);
+  const intensity = Number(document.getElementById('w_intensity').value);
+  if(!sport || !min) return;
+  state.workouts.push({id: Date.now(), sport, min, intensity});
+  document.getElementById('w_sport').value=''; document.getElementById('w_min').value='';
+  saveState(); render();
+});
+
+document.getElementById('addManualFood').addEventListener('click', ()=>{
+  const name = document.getElementById('f_name').value.trim();
+  const cal = Number(document.getElementById('f_cal').value);
+  const protein = Number(document.getElementById('f_protein').value) || 0;
+  if(!name || !cal) return;
+  const key = todayKey();
+  if(!state.foodLog[key]) state.foodLog[key] = [];
+  state.foodLog[key].push({name, cal, protein});
+  document.getElementById('f_name').value=''; document.getElementById('f_cal').value=''; document.getElementById('f_protein').value='';
+  saveState(); render();
+});
+
+loadState();
+if(!IN_CLAUDE_ENV){
+  document.getElementById('photoboxWrap').style.display = 'none';
+  document.getElementById('photoDisabledNote').style.display = 'block';
+}
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('service-worker.js').catch(()=>{});
+}
+</script>
+</body>
+</html>
