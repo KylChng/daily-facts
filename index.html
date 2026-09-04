@@ -332,7 +332,15 @@
         <button class="action small ghost" id="detectLoc" type="button">📍 Detect</button>
       </div>
       <div id="locStatus"></div>
+      <label>Or type where you're headed</label>
+      <input type="text" id="locationTypeIn" placeholder="e.g. Uptown Damansara">
+      <div id="locTypeStatus" class="note" style="margin-top:6px;"></div>
+      <div class="note" id="suggestMeta" style="margin-top:8px;"></div>
       <div class="quickpick" id="quickPickList"></div>
+      <button class="action ghost" id="refreshQuickPick">🔀 Show different options</button>
+
+      <h3 id="vegSectionLabel" style="display:none;">🌱 Vegetarian Options Here</h3>
+      <div class="quickpick" id="vegPickList"></div>
 
       <h3>Manual Entry</h3>
       <div class="grid3">
@@ -351,7 +359,6 @@
   <div class="panel" id="panel-dash">
     <div class="card" id="bmiCard"></div>
     <div class="card" id="targetsCard"></div>
-    <div class="card" id="suggestCard"></div>
   </div>
 
   <!-- HISTORY -->
@@ -416,32 +423,52 @@ let selectedLogDate = todayKey();
 // ---------- FOOD DATABASE ----------
 // gi = rough glycemic-load bucket for the whole plate (portion + carb type), not a lab GI value.
 const FOOD_DB = {
-  "Bangsar (Telawi)": [
+  "Bangsar": [
     {name:"Veranda South Indian — Mutton Ghee Roast + rice", cal:620, protein:36, gi:"med"},
+    {name:"Veranda South Indian — Mushroom Pepper Fry + rice (veg)", cal:480, protein:14, gi:"med", veg:true},
     {name:"The Peranakan — Ayam Buah Keluak + rice", cal:600, protein:30, gi:"med"},
-    {name:"The Hungry Tapir (vegan) — Ayam Gepuk Burger", cal:550, protein:22, gi:"med"},
+    {name:"The Hungry Tapir (vegan) — Ayam Gepuk Burger", cal:550, protein:22, gi:"med", veg:true},
     {name:"CHARA — Wood-fired Pomfret Fish", cal:480, protein:42, gi:"low"},
     {name:"ROOST — Chimichurri Chicken + charred cabbage", cal:520, protein:44, gi:"low"},
     {name:"Tsuka — Nasi Kerabu Ayam Percik", cal:560, protein:28, gi:"high"},
     {name:"La Stellar Maison — Duck Confit + truffle pasta", cal:700, protein:34, gi:"high"},
+    {name:"Rumoh Mekda — Ayam Goreng + Lemak Bakar + rice", cal:640, protein:32, gi:"med"},
+    {name:"Bunga Kantan (Little Penang) — Char Koay Teow", cal:620, protein:20, gi:"high"},
+    {name:"Maya Banana Leaf — Banana Leaf Rice", cal:650, protein:24, gi:"high"},
+    {name:"Southern Rock Seafood — Grilled Fish + sides", cal:520, protein:40, gi:"low"},
+    {name:"Muito Bom Brazilian BBQ — Mixed grill plate", cal:750, protein:48, gi:"low"},
+    {name:"Chinta — Daging Salai Gulai Lemak + rice", cal:620, protein:34, gi:"med"},
+    {name:"Lisette's Cafe — Prawn Mantou + Gnocchi", cal:580, protein:22, gi:"med"},
   ],
-  "TTDI (main)": [
+  "TTDI (Base)": [
     {name:"Corks Out — Grilled Snapper & King Prawn", cal:650, protein:45, gi:"low"},
-    {name:"Yarl — Masala Dosai (veg)", cal:480, protein:12, gi:"high"},
+    {name:"Yarl — Masala Dosai (veg)", cal:480, protein:12, gi:"high", veg:true},
     {name:"Leen's Middle East Kitchen — Kebab Khashkhash + rice", cal:620, protein:38, gi:"med"},
     {name:"Warong Din — Nasi Daging", cal:650, protein:30, gi:"high"},
     {name:"Serambi Cafe — Buttermilk Schnitzel Chicken + fries", cal:750, protein:40, gi:"med"},
     {name:"Sisters Place — Char Kuey Teow", cal:600, protein:18, gi:"high"},
     {name:"Koji — Unagi Claypot Rice (per person, shared)", cal:550, protein:28, gi:"med"},
+    {name:"Mala Bistronome — Malatang bowl (protein+veg)", cal:550, protein:32, gi:"low"},
+    {name:"Team Udon — Niku Udon", cal:620, protein:28, gi:"high"},
+    {name:"Cafe Chef Wan — Nasi Goreng Petai + Prawns", cal:680, protein:30, gi:"high"},
+    {name:"The Ottoman KL — Chicken Steak + sides", cal:600, protein:38, gi:"med"},
+    {name:"Bocado (Bukit Damansara) — Grilled seafood tapas", cal:560, protein:36, gi:"low"},
   ],
-  "Subang Jaya (SS15/SS19)": [
+  "Subang Jaya": [
     {name:"Rewang Signature — Ayam Gepuk + rice", cal:620, protein:32, gi:"med"},
     {name:"Santap Kopitiam — Nasi Lemak Sambal Sotong", cal:580, protein:26, gi:"high"},
     {name:"SHI GUANG Kopitiam — Curry Mee", cal:560, protein:20, gi:"high"},
     {name:"JIBRIL SS15 — Salted Egg Butter Chicken + rice", cal:780, protein:34, gi:"med"},
     {name:"TalkCrab — Seafood platter (per person, est.)", cal:600, protein:40, gi:"low"},
     {name:"Hotzilla — Chicken Tenders set", cal:700, protein:32, gi:"med"},
-    {name:"Eleven Moon Cafe — Shio pan + coffee (light)", cal:380, protein:8, gi:"high"},
+    {name:"Eleven Moon Cafe — Shio pan + coffee (light)", cal:380, protein:8, gi:"high", veg:true},
+    {name:"Anas Xinjiang Lamb — Dry-fried Pulled Noodles + lamb", cal:680, protein:34, gi:"med"},
+    {name:"Jibby & Co (Empire) — Carbonara Pasta", cal:750, protein:28, gi:"high"},
+    {name:"RESTORAN SEDAP — Nasi Kerabu + Curry Chicken", cal:580, protein:26, gi:"high"},
+    {name:"Grand Harbour — Dim Sum set (per person, est.)", cal:550, protein:24, gi:"med"},
+    {name:"Serai @ NU Empire — Nasi Kerabu + Beef Noodles", cal:620, protein:30, gi:"high"},
+    {name:"Bakul DimSum — Halal Dim Sum set", cal:520, protein:26, gi:"med"},
+    {name:"Melaka Chicken Rice (Summit) — Chicken Rice", cal:600, protein:32, gi:"high"},
   ],
   "One Utama": [
     {name:"Kampung Dining — Pork Ribs Berempah Nasi Lemak", cal:750, protein:36, gi:"high"},
@@ -451,8 +478,28 @@ const FOOD_DB = {
     {name:"Rich Kopitiam — Curry Chicken + Fried Rice", cal:640, protein:28, gi:"high"},
     {name:"Robataya Izakaya — Grilled Teriyaki Chicken set", cal:600, protein:38, gi:"med"},
     {name:"Banglo289 — Home-style set (est.)", cal:580, protein:26, gi:"med"},
+    {name:"Samtai YAMCH'A (halal) — Mee Tarik + Teriyaki Chicken", cal:620, protein:30, gi:"high"},
+    {name:"BHC Chicken — Korean Fried Chicken set", cal:750, protein:34, gi:"med"},
+    {name:"DUANASI Malatang — Build-your-own bowl (protein+veg)", cal:500, protein:28, gi:"low"},
+    {name:"PASAR EATAI (Chinese Muslim) — Lamb Skewers + hand-pulled noodles", cal:700, protein:36, gi:"med"},
   ],
-  "Atria Mall (Damansara Jaya)": [
+  "Uptown Damansara": [
+    {name:"Village Park — Nasi Lemak Ayam Goreng", cal:780, protein:30, gi:"high"},
+    {name:"M Dining (Thai) — Green Curry Chicken + rice", cal:620, protein:32, gi:"med"},
+    {name:"Damansara Uptown Food Court — Yong Tau Fu (veg selection)", cal:380, protein:18, gi:"low", veg:true},
+    {name:"Operator 21 — Tornado Katsu Rice Bowl", cal:650, protein:34, gi:"high"},
+    {name:"Operator 21 — Angus Smash Burger", cal:750, protein:38, gi:"high"},
+    {name:"Ipoh Tuck Kee — Egg Fried Kway Teow", cal:600, protein:20, gi:"high"},
+    {name:"Piii Eatery — Korean Sweet Chili Chicken Rice Bowl", cal:620, protein:30, gi:"high"},
+    {name:"Hot Bird — Chicken Tenders + sandwich", cal:700, protein:36, gi:"med"},
+    {name:"Yitcha Kawkaw Kopitiam — Chicken Hor Fun Soup", cal:480, protein:26, gi:"med"},
+    {name:"Chic Cafe (Japanese fusion) — Chicken Karaage Set", cal:680, protein:34, gi:"med"},
+    {name:"Ramen Seirock-ya (halal) — Toripaitan Ramen", cal:620, protein:28, gi:"high"},
+    {name:"Chicken & Beer (CB) — Fried Chicken + sides", cal:720, protein:32, gi:"med"},
+    {name:"Common Feed — Truffle Pizza + salad", cal:650, protein:22, gi:"high"},
+    {name:"A'rest Cafe — Smoked Duck Carbonara", cal:680, protein:24, gi:"high"},
+  ],
+  "Atria Mall": [
     {name:"Moim Korean — Bibimbap", cal:610, protein:28, gi:"med"},
     {name:"Moim Korean — BBQ Set (meat + banchan)", cal:750, protein:45, gi:"low"},
     {name:"Mr Fish — Seafood Noodle Soup", cal:480, protein:30, gi:"med"},
@@ -460,14 +507,18 @@ const FOOD_DB = {
     {name:"Antipodean — Shredded Chicken Sandwich", cal:560, protein:34, gi:"med"},
     {name:"House of Taipei — Braised Pork Rice", cal:640, protein:24, gi:"high"},
     {name:"QHouse — Grilled Fish + rice", cal:490, protein:32, gi:"med"},
+    {name:"Coffee Space Damansara — Onion Gravy Chicken Rice Bowl", cal:580, protein:28, gi:"high"},
+    {name:"Sour Little 7 — Suan Cai Fish (sour soup)", cal:520, protein:34, gi:"low"},
+    {name:"Pickzza — Thin Crust Pizza (beef pepperoni)", cal:680, protein:26, gi:"high"},
+    {name:"One Afternoon Cafe — Croissant + Latte (light)", cal:380, protein:8, gi:"high", veg:true},
   ],
   "Mamak / Kopitiam (general)": [
     {name:"Maggi goreng telur", cal:520, protein:14, gi:"high"},
-    {name:"Roti canai + dhal (2pc)", cal:460, protein:9, gi:"high"},
+    {name:"Roti canai + dhal (2pc)", cal:460, protein:9, gi:"high", veg:true},
     {name:"Nasi lemak biasa + egg", cal:500, protein:12, gi:"high"},
     {name:"Mee goreng mamak + chicken", cal:600, protein:22, gi:"high"},
     {name:"Chicken chop (kopitiam style)", cal:680, protein:38, gi:"med"},
-    {name:"Half-boiled eggs (2) + toast", cal:320, protein:14, gi:"med"},
+    {name:"Half-boiled eggs (2) + toast", cal:320, protein:14, gi:"med", veg:true},
   ],
   "Western / Cafe (general)": [
     {name:"Grilled chicken breast + salad", cal:420, protein:45, gi:"low"},
@@ -479,7 +530,7 @@ const FOOD_DB = {
     {name:"Steamed fish + rice + veg", cal:450, protein:36, gi:"med"},
     {name:"Stir-fry chicken + rice", cal:520, protein:34, gi:"med"},
     {name:"Egg fried rice + veg", cal:480, protein:16, gi:"high"},
-    {name:"Tofu + veg stir-fry + rice", cal:420, protein:20, gi:"med"},
+    {name:"Tofu + veg stir-fry + rice", cal:420, protein:20, gi:"med", veg:true},
     {name:"Grilled chicken + sweet potato", cal:440, protein:42, gi:"low"},
   ],
   "Travelling / Other": [
@@ -491,11 +542,12 @@ const FOOD_DB = {
 
 // Known coordinates for geolocation matching
 const KNOWN_LOCATIONS = [
-  {name:"Bangsar (Telawi)", lat:3.1315, lng:101.6710},
-  {name:"TTDI (main)", lat:3.1522, lng:101.6204},
-  {name:"Subang Jaya (SS15/SS19)", lat:3.0758, lng:101.5873},
-  {name:"One Utama", lat:3.1492, lng:101.6166},
-  {name:"Atria Mall (Damansara Jaya)", lat:3.1271, lng:101.6165},
+  {name:"Bangsar", lat:3.1300, lng:101.6740, radius:3},
+  {name:"TTDI (Base)", lat:3.1490, lng:101.6240, radius:2.5},
+  {name:"Subang Jaya", lat:3.0650, lng:101.5850, radius:5},
+  {name:"Uptown Damansara", lat:3.1345, lng:101.6220, radius:2},
+  {name:"One Utama", lat:3.1492, lng:101.6166, radius:1},
+  {name:"Atria Mall", lat:3.1271, lng:101.6165, radius:1},
 ];
 
 // ---------- STORAGE ----------
@@ -607,15 +659,16 @@ document.getElementById('detectLoc').addEventListener('click', ()=>{
   navigator.geolocation.getCurrentPosition(
     (pos)=>{
       const {latitude, longitude} = pos.coords;
-      let nearest = null, nearestDist = Infinity;
+      let nearest = null, nearestDist = Infinity, nearestRatio = Infinity;
       KNOWN_LOCATIONS.forEach(loc=>{
         const d = haversine(latitude, longitude, loc.lat, loc.lng);
-        if(d < nearestDist){ nearestDist = d; nearest = loc; }
+        const ratio = d / loc.radius;
+        if(ratio < nearestRatio){ nearestRatio = ratio; nearestDist = d; nearest = loc; }
       });
-      if(nearest && nearestDist <= 1.5){
+      if(nearest && nearestRatio <= 1){
         document.getElementById('locationSelect').value = nearest.name;
         renderQuickPick();
-        status.textContent = `Matched: ${nearest.name} (${nearestDist.toFixed(2)}km away)`;
+        status.textContent = `Matched: ${nearest.name} (${nearestDist.toFixed(1)}km away)`;
       } else {
         status.textContent = "No known location nearby — select manually below.";
       }
@@ -719,15 +772,101 @@ function renderDayTabs(){
   });
 }
 
+function shuffleArray(arr){
+  const a = arr.slice();
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
+
+// Deck-based suggestions: shuffle the eligible dishes once per location, hand out
+// chunks on each refresh so you don't see the same items reordered — only reshuffles
+// once you've actually seen everything.
+let suggestDeck = [];
+let suggestDeckPos = 0;
+let suggestDeckLoc = null;
+const SUGGEST_CHUNK = 5;
+
+function buildSuggestDeck(loc, calRem){
+  const eligible = (FOOD_DB[loc]||[]).filter(d => calRem==null || d.cal <= (calRem+250));
+  suggestDeck = shuffleArray(eligible);
+  suggestDeckPos = 0;
+  suggestDeckLoc = loc;
+}
+
+function currentSuggestChunk(loc, calRem){
+  if(suggestDeckLoc !== loc || suggestDeck.length===0){
+    buildSuggestDeck(loc, calRem);
+  }
+  if(suggestDeckPos >= suggestDeck.length){
+    buildSuggestDeck(loc, calRem);
+  }
+  return suggestDeck.slice(suggestDeckPos, suggestDeckPos+SUGGEST_CHUNK);
+}
+
 function renderQuickPick(){
   const loc = document.getElementById('locationSelect').value || Object.keys(FOOD_DB)[0];
   const list = document.getElementById('quickPickList');
-  list.innerHTML = '';
-  (FOOD_DB[loc]||[]).forEach(dish=>{
+  const metaEl = document.getElementById('suggestMeta');
+  const pcosOn = state.profile.pcos === 'on';
+
+  const cals = calorieTarget(), prot = proteinTarget();
+  let calRem = null, protRem = null;
+  if(cals){
+    const totals = todaysTotals();
+    calRem = cals - totals.cal;
+    protRem = prot - totals.protein;
+  }
+
+  if(cals && calRem <= 50){
+    metaEl.textContent = "You've hit (or nearly hit) today's target — if still hungry, lean protein + veg.";
+    list.innerHTML = '';
+  } else {
+    metaEl.textContent = cals
+      ? `Picks that fit your remaining ${calRem} cal / ${protRem}g protein today — tap to log, or refresh for different ones.`
+      : `Browsing ${loc}'s full list — complete Setup for picks tailored to your daily targets.`;
+    const chunk = currentSuggestChunk(loc, calRem);
+    list.innerHTML = '';
+    if(chunk.length === 0){
+      list.innerHTML = '<div class="empty">Nothing here fits your remaining budget — try a lighter option or switch location.</div>';
+    }
+    chunk.forEach(dish=>{
+      const div = document.createElement('div');
+      div.className = 'dish';
+      const giBadge = pcosOn ? `<span class="pill ${dish.gi==='low'?'ok':dish.gi==='high'?'over':''}" style="margin-left:6px;">${dish.gi} GI</span>` : '';
+      const gapNote = protRem ? ` · closes ${Math.round((dish.protein/Math.max(protRem,1))*100)}% of protein gap` : '';
+      div.innerHTML = `<span class="name">${dish.name}${giBadge}</span><span class="macro">${dish.cal} cal · ${dish.protein}g P${gapNote}</span>`;
+      div.onclick = ()=>{
+        const key = todayKey();
+        if(!state.foodLog[key]) state.foodLog[key] = [];
+        state.foodLog[key].push({name:dish.name, cal:dish.cal, protein:dish.protein});
+        saveState(); render();
+      };
+      list.appendChild(div);
+    });
+  }
+  renderVegPicks(loc);
+}
+
+function renderVegPicks(loc){
+  const label = document.getElementById('vegSectionLabel');
+  const list = document.getElementById('vegPickList');
+  let vegDishes = (FOOD_DB[loc]||[]).filter(d=>d.veg);
+  let fallbackNote = '';
+  if(vegDishes.length === 0){
+    const fallbackSources = ["Mamak / Kopitiam (general)", "Home-cooked"];
+    vegDishes = fallbackSources.flatMap(k => (FOOD_DB[k]||[]).filter(d=>d.veg));
+    fallbackNote = `No dedicated veg dishes logged at ${loc} yet — here are general vegetarian options instead.`;
+  }
+  if(vegDishes.length === 0){ label.style.display='none'; list.innerHTML=''; return; }
+  label.style.display='block';
+  list.innerHTML = fallbackNote ? `<div class="note" style="margin-top:0;">${fallbackNote}</div>` : '';
+  vegDishes.forEach(dish=>{
     const div = document.createElement('div');
     div.className = 'dish';
-    const giBadge = state.profile.pcos === 'on' ? `<span class="pill ${dish.gi==='low'?'ok':dish.gi==='high'?'over':''}" style="margin-left:6px;">${dish.gi} GI</span>` : '';
-    div.innerHTML = `<span class="name">${dish.name}${giBadge}</span><span class="macro">${dish.cal} cal · ${dish.protein}g P</span>`;
+    div.innerHTML = `<span class="name">${dish.name}</span><span class="macro">${dish.cal} cal · ${dish.protein}g P</span>`;
     div.onclick = ()=>{
       const key = todayKey();
       if(!state.foodLog[key]) state.foodLog[key] = [];
@@ -741,7 +880,6 @@ function renderQuickPick(){
 function renderDashboard(){
   const bmiCard = document.getElementById('bmiCard');
   const targetsCard = document.getElementById('targetsCard');
-  const suggestCard = document.getElementById('suggestCard');
 
   const bmiVal = bmi();
   if(!bmiVal){
@@ -776,42 +914,9 @@ function renderDashboard(){
       <div class="row"><span class="label">Protein target (g)</span><span class="val">${prot}</span></div>
       <div class="row"><span class="label sub">consumed today</span><span class="val small">${totals.protein}</span></div>
       <div class="row"><span class="label sub">remaining</span><span class="val small" style="color:${protRem<0?'var(--coral)':'var(--teal)'}">${protRem}</span></div>
+      <div class="note">Suggestions and quick-logging live in the Log tab now.</div>
     `;
-
-    const loc = document.getElementById('locationSelect').value || Object.keys(FOOD_DB)[0];
-    renderSuggestions(loc, calRem, protRem);
   }
-}
-
-function shuffleArray(arr){
-  const a = arr.slice();
-  for(let i=a.length-1;i>0;i--){
-    const j = Math.floor(Math.random()*(i+1));
-    [a[i],a[j]] = [a[j],a[i]];
-  }
-  return a;
-}
-
-function renderSuggestions(loc, calRem, protRem){
-  const suggestCard = document.getElementById('suggestCard');
-  const pcosOn = state.profile.pcos === 'on';
-  const eligible = (FOOD_DB[loc]||[]).filter(d=> d.cal <= (calRem+150));
-  const shown = shuffleArray(eligible).slice(0,10);
-  suggestCard.innerHTML = `<h2>Suggested <span class="accent">Next Meal</span> <span style="font-size:12px;color:var(--muted);font-weight:400;">— ${loc}</span></h2>`;
-  if(calRem <= 50){
-    suggestCard.innerHTML += `<div class="note">You've hit (or nearly hit) today's calorie target. If you're still hungry, lean toward protein + veg over carbs.</div>`;
-  } else if(shown.length === 0){
-    suggestCard.innerHTML += `<div class="empty">Nothing in this location's list fits your remaining budget — try a lighter/smaller option, or switch location above.</div>`;
-  } else {
-    shown.forEach(d=>{
-      const giNote = pcosOn ? ` · <span style="color:${d.gi==='low'?'var(--teal)':d.gi==='high'?'var(--coral)':'var(--peri)'}">${d.gi} GI</span>` : '';
-      suggestCard.innerHTML += `<div class="suggest-card"><div class="name">${d.name}</div><div class="why">${d.cal} cal · ${d.protein}g protein${giNote} — closes ${Math.round((d.protein/Math.max(protRem,1))*100)}% of your remaining protein gap</div></div>`;
-    });
-  }
-  suggestCard.innerHTML += `<button class="action ghost" id="refreshSuggestBtn">🔀 Show different options</button>`;
-  suggestCard.innerHTML += `<div class="note">Macros are estimates based on typical portions, not lab-measured. Change location in the Log tab to switch the suggestion pool.</div>`;
-  const btn = document.getElementById('refreshSuggestBtn');
-  if(btn) btn.addEventListener('click', ()=> renderSuggestions(loc, calRem, protRem));
 }
 
 // ---------- EVENTS ----------
@@ -856,6 +961,29 @@ document.getElementById('addWorkout').addEventListener('click', ()=>{
   state.workoutLog[selectedLogDate].push({id: Date.now(), sport, min: totalMin, intensity});
   document.getElementById('w_sport').value=''; document.getElementById('w_hours').value=''; document.getElementById('w_min').value='';
   saveState(); render();
+});
+
+document.getElementById('locationTypeIn').addEventListener('input', (e)=>{
+  const text = e.target.value.trim();
+  const statusEl = document.getElementById('locTypeStatus');
+  if(!text){ statusEl.textContent=''; return; }
+  const lowerText = text.toLowerCase();
+  const match = Object.keys(FOOD_DB).find(k=>{
+    const shortK = k.split(' (')[0].toLowerCase();
+    return k.toLowerCase().includes(lowerText) || lowerText.includes(shortK);
+  });
+  if(match){
+    document.getElementById('locationSelect').value = match;
+    renderQuickPick();
+    statusEl.textContent = `Matched: ${match}`;
+  } else {
+    statusEl.textContent = `No curated picks for "${text}" yet — tell me in chat and I'll pull real spots for it. Dropdown above still has your other saved areas.`;
+  }
+});
+
+document.getElementById('refreshQuickPick').addEventListener('click', ()=>{
+  suggestDeckPos += SUGGEST_CHUNK;
+  render();
 });
 
 document.getElementById('addManualFood').addEventListener('click', ()=>{
