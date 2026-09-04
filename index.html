@@ -157,6 +157,20 @@
   }
   .toggle-row button.sel{background:var(--peri);color:#0A0B0D;}
 
+  .daytabs{display:flex;gap:5px;margin:10px 0 4px;}
+  .daytabs button{
+    flex:1;padding:7px 2px 6px;border-radius:10px;border:1.5px solid #2C3240;
+    background:var(--surface2);color:var(--muted);cursor:pointer;text-align:center;
+    font-family:'Poppins',sans-serif;line-height:1.25;
+  }
+  .daytabs button .dow{display:block;font-size:10.5px;font-weight:600;}
+  .daytabs button .dnum{display:block;font-size:13.5px;font-weight:700;color:var(--white);}
+  .daytabs button .todaydot{display:block;font-size:8.5px;font-weight:700;color:var(--teal);margin-top:1px;letter-spacing:0.03em;text-transform:uppercase;}
+  .daytabs button.today{border-color:var(--teal);}
+  .daytabs button.sel{background:var(--teal);border-color:var(--teal);}
+  .daytabs button.sel .dnum,.daytabs button.sel .dow{color:#0A0B0D;}
+  .daytabs button.sel .todaydot{color:#0A0B0D;}
+
   .pill{
     display:inline-block;
     font-family:'Space Mono',monospace;
@@ -281,7 +295,8 @@
   <!-- LOG -->
   <div class="panel" id="panel-log">
     <div class="card">
-      <h2>Today's <span class="accent">Activity</span></h2>
+      <h2>This Week's <span class="accent">Activity</span></h2>
+      <div class="daytabs" id="dayTabs"></div>
       <div class="grid2">
         <div><label>Sport</label><input type="text" id="w_sport" placeholder="Pickleball"></div>
         <div>
@@ -297,8 +312,8 @@
         <div><label>Hours</label><input type="number" id="w_hours" placeholder="0" min="0"></div>
         <div><label>Minutes</label><input type="number" id="w_min" placeholder="30" min="0" max="59"></div>
       </div>
-      <button class="action ghost" id="addWorkout">+ Add to today</button>
-      <h3>Today's Workouts</h3>
+      <button class="action ghost" id="addWorkout">+ Add to selected day</button>
+      <h3 id="workoutListLabel">Today's Workouts</h3>
       <div id="workoutList"></div>
       <div class="note" id="weeklySummary" style="margin-top:10px;"></div>
     </div>
@@ -342,16 +357,42 @@ let state = {
   foodLog: {}
 };
 
-function todayKey(){ return new Date().toISOString().slice(0,10); }
+function todayKey(){
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function localDateKey(d){
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
 function lastNDays(n){
   const days = [];
   for(let i=0;i<n;i++){
     const d = new Date();
     d.setDate(d.getDate()-i);
-    days.push(d.toISOString().slice(0,10));
+    days.push(localDateKey(d));
   }
   return days;
 }
+function getWeekDates(){
+  // Monday-start week containing today
+  const now = new Date();
+  const dow = now.getDay(); // 0=Sun..6=Sat
+  const mondayOffset = dow===0 ? -6 : 1-dow;
+  const monday = new Date(now);
+  monday.setDate(now.getDate()+mondayOffset);
+  const dates = [];
+  for(let i=0;i<7;i++){
+    const d = new Date(monday);
+    d.setDate(monday.getDate()+i);
+    dates.push(d);
+  }
+  return dates;
+}
+function weekdayName(key){
+  const [y,m,d] = key.split('-').map(Number);
+  return new Date(y,m-1,d).toLocaleDateString('en-MY',{weekday:'long'});
+}
+let selectedLogDate = todayKey();
 
 // ---------- FOOD DATABASE ----------
 // gi = rough glycemic-load bucket for the whole plate (portion + carb type), not a lab GI value.
@@ -567,6 +608,7 @@ document.getElementById('detectLoc').addEventListener('click', ()=>{
   );
 });
 
+
 // ---------- RENDER ----------
 function render(){
   document.getElementById('todayDate').textContent = new Date().toLocaleDateString('en-MY',{weekday:'short', day:'numeric', month:'short'});
@@ -579,10 +621,13 @@ function render(){
   setToggle('p_goal', state.profile.goal);
   setToggle('p_pcos', state.profile.pcos);
 
+  renderDayTabs();
   const wl = document.getElementById('workoutList');
-  const todayWorkouts = state.workoutLog[todayKey()] || [];
-  wl.innerHTML = todayWorkouts.length ? '' : '<div class="empty">Nothing logged yet today.</div>';
-  todayWorkouts.forEach(w=>{
+  const dayWorkouts = state.workoutLog[selectedLogDate] || [];
+  document.getElementById('workoutListLabel').textContent =
+    selectedLogDate === todayKey() ? "Today's Workouts" : `${weekdayName(selectedLogDate)}'s Workouts`;
+  wl.innerHTML = dayWorkouts.length ? '' : '<div class="empty">Nothing logged for this day yet.</div>';
+  dayWorkouts.forEach(w=>{
     const div = document.createElement('div');
     div.className = 'workout-item';
     const intensityLabel = w.intensity==1?'Low':w.intensity==2?'Med':'High';
@@ -592,7 +637,7 @@ function render(){
     const btn = document.createElement('button');
     btn.className='del'; btn.textContent='remove';
     btn.onclick = ()=>{
-      state.workoutLog[todayKey()] = state.workoutLog[todayKey()].filter(x=>x.id!==w.id);
+      state.workoutLog[selectedLogDate] = state.workoutLog[selectedLogDate].filter(x=>x.id!==w.id);
       saveState(); render();
     };
     div.appendChild(btn);
@@ -600,7 +645,7 @@ function render(){
   });
   const mult = weeklyActivityMultiplier();
   document.getElementById('weeklySummary').textContent =
-    `This week so far: activity level "${weeklyMultiplierLabel(mult)}" (feeds into your TDEE below). Logging today keeps this current — it looks back 7 days.`;
+    `This week so far: activity level "${weeklyMultiplierLabel(mult)}" (feeds into your TDEE below) — based on everything logged across the last 7 days.`;
 
   const locSel = document.getElementById('locationSelect');
   if(!locSel.dataset.built){
@@ -634,6 +679,25 @@ function render(){
 function setToggle(groupId, val){
   const group = document.getElementById(groupId);
   [...group.children].forEach(btn=> btn.classList.toggle('sel', btn.dataset.val === val));
+}
+
+function renderDayTabs(){
+  const dates = getWeekDates();
+  const today = todayKey();
+  const dowLabels = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const wrap = document.getElementById('dayTabs');
+  wrap.innerHTML = '';
+  dates.forEach((d,i)=>{
+    const key = localDateKey(d);
+    const btn = document.createElement('button');
+    let cls = [];
+    if(key===selectedLogDate) cls.push('sel');
+    if(key===today) cls.push('today');
+    btn.className = cls.join(' ');
+    btn.innerHTML = `<span class="dow">${dowLabels[i]}</span><span class="dnum">${d.getDate()}</span>${key===today?'<span class="todaydot">Today</span>':''}`;
+    btn.onclick = ()=>{ selectedLogDate = key; render(); };
+    wrap.appendChild(btn);
+  });
 }
 
 function renderQuickPick(){
@@ -757,9 +821,8 @@ document.getElementById('addWorkout').addEventListener('click', ()=>{
   const totalMin = hours*60 + mins;
   const intensity = Number(document.getElementById('w_intensity').value);
   if(!sport || !totalMin) return;
-  const key = todayKey();
-  if(!state.workoutLog[key]) state.workoutLog[key] = [];
-  state.workoutLog[key].push({id: Date.now(), sport, min: totalMin, intensity});
+  if(!state.workoutLog[selectedLogDate]) state.workoutLog[selectedLogDate] = [];
+  state.workoutLog[selectedLogDate].push({id: Date.now(), sport, min: totalMin, intensity});
   document.getElementById('w_sport').value=''; document.getElementById('w_hours').value=''; document.getElementById('w_min').value='';
   saveState(); render();
 });
