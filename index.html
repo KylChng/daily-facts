@@ -203,13 +203,13 @@
     display:flex;flex-direction:column;gap:8px;margin-top:10px;
   }
   .dish{
-    display:flex;justify-content:space-between;align-items:center;
+    display:flex;flex-direction:column;gap:4px;
     border-radius:14px;border:1.5px solid #2C3240;padding:10px 12px;background:var(--surface2);
     cursor:pointer;
   }
   .dish:active{border-color:var(--teal);}
-  .dish .name{font-size:13.5px;font-weight:500;flex:1;color:var(--white);}
-  .dish .macro{font-family:'Space Mono',monospace;font-size:11px;color:var(--teal);white-space:nowrap;margin-left:8px;}
+  .dish .name{font-size:13.5px;font-weight:600;color:var(--white);line-height:1.35;}
+  .dish .macro{font-family:'Space Mono',monospace;font-size:11px;color:var(--teal);white-space:normal;line-height:1.4;}
 
   .note{font-size:12px;color:var(--muted);margin-top:10px;line-height:1.5;}
   .empty{font-size:13px;color:var(--muted);padding:10px 0;}
@@ -335,6 +335,18 @@
       <label>Or type where you're headed</label>
       <input type="text" id="locationTypeIn" placeholder="e.g. Uptown Damansara">
       <div id="locTypeStatus" class="note" style="margin-top:6px;"></div>
+
+      <label>Restaurant (optional)</label>
+      <select id="restaurantSelect"><option value="">All restaurants in this area</option></select>
+
+      <h3>Portion Size</h3>
+      <div class="toggle-row" id="portionSize">
+        <button data-val="1" class="sel">Full</button>
+        <button data-val="0.75">3/4</button>
+        <button data-val="0.5">Half</button>
+        <button data-val="0.25">Small</button>
+      </div>
+
       <div class="note" id="suggestMeta" style="margin-top:8px;"></div>
       <div class="quickpick" id="quickPickList"></div>
       <button class="action ghost" id="refreshQuickPick">🔀 Show different options</button>
@@ -781,33 +793,69 @@ function shuffleArray(arr){
   return a;
 }
 
-// Deck-based suggestions: shuffle the eligible dishes once per location, hand out
+function getRestaurantName(dishName){
+  return dishName.split('—')[0].trim();
+}
+
+// Portion size applied to whatever gets logged next — quick-pick tap, veg pick tap, or manual entry.
+let portionMultiplier = 1;
+function portionLabelSuffix(mult){
+  if(mult===1) return '';
+  if(mult===0.75) return ' (3/4 portion)';
+  if(mult===0.5) return ' (Half portion)';
+  if(mult===0.25) return ' (Small portion)';
+  return '';
+}
+function logFood(name, cal, protein){
+  const scaledCal = Math.round(cal*portionMultiplier);
+  const scaledProtein = Math.round(protein*portionMultiplier);
+  const key = todayKey();
+  if(!state.foodLog[key]) state.foodLog[key] = [];
+  state.foodLog[key].push({name: name+portionLabelSuffix(portionMultiplier), cal: scaledCal, protein: scaledProtein});
+  saveState(); render();
+}
+
+let restaurantSelectLoc = null;
+function populateRestaurantSelect(loc){
+  const sel = document.getElementById('restaurantSelect');
+  const current = sel.value;
+  const names = [...new Set((FOOD_DB[loc]||[]).map(d=>getRestaurantName(d.name)))].sort();
+  sel.innerHTML = '<option value="">All restaurants in this area</option>' + names.map(n=>`<option value="${n.replace(/"/g,'')}">${n}</option>`).join('');
+  sel.value = names.includes(current) ? current : '';
+  restaurantSelectLoc = loc;
+}
+
+// Deck-based suggestions: shuffle the eligible dishes once per location+restaurant, hand out
 // chunks on each refresh so you don't see the same items reordered — only reshuffles
 // once you've actually seen everything.
 let suggestDeck = [];
 let suggestDeckPos = 0;
-let suggestDeckLoc = null;
+let suggestDeckKey = null;
 const SUGGEST_CHUNK = 5;
 
-function buildSuggestDeck(loc, calRem){
-  const eligible = (FOOD_DB[loc]||[]).filter(d => calRem==null || d.cal <= (calRem+250));
+function buildSuggestDeck(loc, restaurant, calRem){
+  let eligible = (FOOD_DB[loc]||[]).filter(d => calRem==null || d.cal <= (calRem+250));
+  if(restaurant) eligible = eligible.filter(d => getRestaurantName(d.name) === restaurant);
   suggestDeck = shuffleArray(eligible);
   suggestDeckPos = 0;
-  suggestDeckLoc = loc;
+  suggestDeckKey = loc+'|'+restaurant;
 }
 
-function currentSuggestChunk(loc, calRem){
-  if(suggestDeckLoc !== loc || suggestDeck.length===0){
-    buildSuggestDeck(loc, calRem);
+function currentSuggestChunk(loc, restaurant, calRem){
+  const key = loc+'|'+restaurant;
+  if(suggestDeckKey !== key || suggestDeck.length===0){
+    buildSuggestDeck(loc, restaurant, calRem);
   }
   if(suggestDeckPos >= suggestDeck.length){
-    buildSuggestDeck(loc, calRem);
+    buildSuggestDeck(loc, restaurant, calRem);
   }
   return suggestDeck.slice(suggestDeckPos, suggestDeckPos+SUGGEST_CHUNK);
 }
 
 function renderQuickPick(){
   const loc = document.getElementById('locationSelect').value || Object.keys(FOOD_DB)[0];
+  if(restaurantSelectLoc !== loc) populateRestaurantSelect(loc);
+  const restaurant = document.getElementById('restaurantSelect').value;
   const list = document.getElementById('quickPickList');
   const metaEl = document.getElementById('suggestMeta');
   const pcosOn = state.profile.pcos === 'on';
@@ -820,17 +868,19 @@ function renderQuickPick(){
     protRem = prot - totals.protein;
   }
 
+  const scopeLabel = restaurant ? restaurant : loc;
+
   if(cals && calRem <= 50){
     metaEl.textContent = "You've hit (or nearly hit) today's target — if still hungry, lean protein + veg.";
     list.innerHTML = '';
   } else {
     metaEl.textContent = cals
-      ? `Picks that fit your remaining ${calRem} cal / ${protRem}g protein today — tap to log, or refresh for different ones.`
-      : `Browsing ${loc}'s full list — complete Setup for picks tailored to your daily targets.`;
-    const chunk = currentSuggestChunk(loc, calRem);
+      ? `Picks from ${scopeLabel} that fit your remaining ${calRem} cal / ${protRem}g protein today — tap to log, or refresh for different ones.`
+      : `Browsing ${scopeLabel}'s full list — complete Setup for picks tailored to your daily targets.`;
+    const chunk = currentSuggestChunk(loc, restaurant, calRem);
     list.innerHTML = '';
     if(chunk.length === 0){
-      list.innerHTML = '<div class="empty">Nothing here fits your remaining budget — try a lighter option or switch location.</div>';
+      list.innerHTML = '<div class="empty">Nothing here fits your remaining budget — try a lighter option, a different restaurant, or switch location.</div>';
     }
     chunk.forEach(dish=>{
       const div = document.createElement('div');
@@ -838,27 +888,34 @@ function renderQuickPick(){
       const giBadge = pcosOn ? `<span class="pill ${dish.gi==='low'?'ok':dish.gi==='high'?'over':''}" style="margin-left:6px;">${dish.gi} GI</span>` : '';
       const gapNote = protRem ? ` · closes ${Math.round((dish.protein/Math.max(protRem,1))*100)}% of protein gap` : '';
       div.innerHTML = `<span class="name">${dish.name}${giBadge}</span><span class="macro">${dish.cal} cal · ${dish.protein}g P${gapNote}</span>`;
-      div.onclick = ()=>{
-        const key = todayKey();
-        if(!state.foodLog[key]) state.foodLog[key] = [];
-        state.foodLog[key].push({name:dish.name, cal:dish.cal, protein:dish.protein});
-        saveState(); render();
-      };
+      div.onclick = ()=> logFood(dish.name, dish.cal, dish.protein);
       list.appendChild(div);
     });
   }
-  renderVegPicks(loc);
+  renderVegPicks(loc, restaurant);
 }
 
-function renderVegPicks(loc){
+function renderVegPicks(loc, restaurant){
   const label = document.getElementById('vegSectionLabel');
   const list = document.getElementById('vegPickList');
-  let vegDishes = (FOOD_DB[loc]||[]).filter(d=>d.veg);
-  let fallbackNote = '';
+  let vegDishes, fallbackNote = '';
+
+  if(restaurant){
+    vegDishes = (FOOD_DB[loc]||[]).filter(d=>d.veg && getRestaurantName(d.name)===restaurant);
+    if(vegDishes.length === 0){
+      vegDishes = (FOOD_DB[loc]||[]).filter(d=>d.veg);
+      fallbackNote = vegDishes.length
+        ? `No vegetarian dish listed for ${restaurant} yet — here are other veg options around ${loc}.`
+        : '';
+    }
+  } else {
+    vegDishes = (FOOD_DB[loc]||[]).filter(d=>d.veg);
+  }
+
   if(vegDishes.length === 0){
     const fallbackSources = ["Mamak / Kopitiam (general)", "Home-cooked"];
     vegDishes = fallbackSources.flatMap(k => (FOOD_DB[k]||[]).filter(d=>d.veg));
-    fallbackNote = `No dedicated veg dishes logged at ${loc} yet — here are general vegetarian options instead.`;
+    fallbackNote = `No dedicated veg dishes logged at ${restaurant||loc} yet — here are general vegetarian options instead.`;
   }
   if(vegDishes.length === 0){ label.style.display='none'; list.innerHTML=''; return; }
   label.style.display='block';
@@ -867,12 +924,7 @@ function renderVegPicks(loc){
     const div = document.createElement('div');
     div.className = 'dish';
     div.innerHTML = `<span class="name">${dish.name}</span><span class="macro">${dish.cal} cal · ${dish.protein}g P</span>`;
-    div.onclick = ()=>{
-      const key = todayKey();
-      if(!state.foodLog[key]) state.foodLog[key] = [];
-      state.foodLog[key].push({name:dish.name, cal:dish.cal, protein:dish.protein});
-      saveState(); render();
-    };
+    div.onclick = ()=> logFood(dish.name, dish.cal, dish.protein);
     list.appendChild(div);
   });
 }
@@ -981,6 +1033,14 @@ document.getElementById('locationTypeIn').addEventListener('input', (e)=>{
   }
 });
 
+document.getElementById('restaurantSelect').addEventListener('change', renderQuickPick);
+
+document.getElementById('portionSize').addEventListener('click', (e)=>{
+  if(e.target.tagName !== 'BUTTON') return;
+  setToggle('portionSize', e.target.dataset.val);
+  portionMultiplier = Number(e.target.dataset.val);
+});
+
 document.getElementById('refreshQuickPick').addEventListener('click', ()=>{
   suggestDeckPos += SUGGEST_CHUNK;
   render();
@@ -991,11 +1051,8 @@ document.getElementById('addManualFood').addEventListener('click', ()=>{
   const cal = Number(document.getElementById('f_cal').value);
   const protein = Number(document.getElementById('f_protein').value) || 0;
   if(!name || !cal) return;
-  const key = todayKey();
-  if(!state.foodLog[key]) state.foodLog[key] = [];
-  state.foodLog[key].push({name, cal, protein});
+  logFood(name, cal, protein);
   document.getElementById('f_name').value=''; document.getElementById('f_cal').value=''; document.getElementById('f_protein').value='';
-  saveState(); render();
 });
 
 function renderHistory(){
