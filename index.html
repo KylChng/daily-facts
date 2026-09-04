@@ -355,6 +355,7 @@
         <button data-val="0.5">Half</button>
         <button data-val="0.25">Small</button>
       </div>
+      <div class="note">Applies to suggested/vegetarian dishes below (scales their listed full-portion numbers). For Manual Entry and the 🤖/📋 estimate button, this instead tells the estimate what portion to calculate for — so those numbers go in as-is, already portion-adjusted.</div>
 
       <div class="note" id="suggestMeta" style="margin-top:8px;"></div>
       <div class="quickpick" id="quickPickList"></div>
@@ -370,7 +371,7 @@
         <div><label>Protein (g)</label><input type="number" id="f_protein" placeholder="30"></div>
       </div>
       <button class="action ghost" id="estimateFoodBtn">🤖 Estimate cal/protein for me</button>
-      <button class="action ghost" id="openChatGPTBtn" style="display:none;">↗ Open ChatGPT</button>
+      <a class="action ghost" id="openChatGPTBtn" href="https://chatgpt.com/" target="_blank" rel="noopener" style="display:none;text-decoration:none;text-align:center;">↗ Open ChatGPT</a>
       <div class="note" id="estimateStatus" style="margin-top:6px;"></div>
       <button class="action ghost" id="addManualFood">+ Add manual item</button>
 
@@ -1085,16 +1086,26 @@ if(!IN_CLAUDE_ENV && !ESTIMATE_API_URL){
   if(openBtn) openBtn.style.display = 'block';
 }
 
-document.getElementById('openChatGPTBtn').addEventListener('click', ()=>{
-  window.open('https://chatgpt.com/', '_blank');
-});
+function portionPhrase(mult){
+  if(mult===0.75) return 'a 3/4 portion (three-quarters of a typical single serving)';
+  if(mult===0.5) return 'a half portion (half of a typical single serving)';
+  if(mult===0.25) return 'a small, handful/fist-sized portion (roughly a quarter of a typical single serving)';
+  return 'a typical full single-serving portion';
+}
+function logFoodExact(name, cal, protein){
+  const key = todayKey();
+  if(!state.foodLog[key]) state.foodLog[key] = [];
+  state.foodLog[key].push({name: name+portionLabelSuffix(portionMultiplier), cal: Math.round(cal), protein: Math.round(protein)});
+  saveState(); render();
+}
 
 document.getElementById('estimateFoodBtn').addEventListener('click', async ()=>{
   const name = document.getElementById('f_name').value.trim();
   const statusEl = document.getElementById('estimateStatus');
   if(!name){ statusEl.textContent = 'Type a dish name first.'; return; }
+  const portion = portionPhrase(portionMultiplier);
 
-  const promptText = `Estimate calories and protein (grams) for a typical single-serving portion of: "${name}". Use common Malaysian/general portion sizes. Reply in exactly this format so I can copy the numbers back: "cal: <number>, protein: <number>g"`;
+  const promptText = `Estimate calories and protein (grams) for ${portion} of: "${name}". Use common Malaysian/general portion sizes as the baseline before adjusting for the portion size given. Reply in exactly this format so I can copy the numbers back: "cal: <number>, protein: <number>g"`;
 
   if(IN_CLAUDE_ENV){
     statusEl.textContent = 'Estimating…';
@@ -1107,7 +1118,7 @@ document.getElementById('estimateFoodBtn').addEventListener('click', async ()=>{
           max_tokens: 300,
           messages: [{
             role: "user",
-            content: `Estimate calories and protein (grams) for a typical single-serving portion of this dish, using common Malaysian/general portion sizes: "${name}". Respond with ONLY raw JSON, no markdown fences, no preamble, in this exact shape: {"cal":number,"protein":number,"confidence":"low|medium|high"}`
+            content: `Estimate calories and protein (grams) for ${portion} of this dish, using common Malaysian/general portion sizes as the baseline before adjusting for the portion size given: "${name}". Respond with ONLY raw JSON, no markdown fences, no preamble, in this exact shape: {"cal":number,"protein":number,"confidence":"low|medium|high"}`
           }]
         })
       });
@@ -1116,7 +1127,7 @@ document.getElementById('estimateFoodBtn').addEventListener('click', async ()=>{
       const parsed = JSON.parse((textBlock.text||'').replace(/```json|```/g,'').trim());
       document.getElementById('f_cal').value = parsed.cal || '';
       document.getElementById('f_protein').value = parsed.protein || '';
-      statusEl.textContent = `Estimated (${parsed.confidence||'medium'} confidence) — adjust if it looks off, then add.`;
+      statusEl.textContent = `Estimated for ${portion} (${parsed.confidence||'medium'} confidence) — adjust if it looks off, then add.`;
     }catch(err){
       statusEl.textContent = 'Estimate failed — enter the numbers manually instead.';
     }
@@ -1129,12 +1140,12 @@ document.getElementById('estimateFoodBtn').addEventListener('click', async ()=>{
       const response = await fetch(ESTIMATE_API_URL, {
         method: "POST",
         headers: {"Content-Type":"application/json"},
-        body: JSON.stringify({ dishName: name })
+        body: JSON.stringify({ dishName: name, portion: portion })
       });
       const parsed = await response.json();
       document.getElementById('f_cal').value = parsed.cal || '';
       document.getElementById('f_protein').value = parsed.protein || '';
-      statusEl.textContent = `Estimated (${parsed.confidence||'medium'} confidence) — adjust if it looks off, then add.`;
+      statusEl.textContent = `Estimated for ${portion} (${parsed.confidence||'medium'} confidence) — adjust if it looks off, then add.`;
     }catch(err){
       statusEl.textContent = 'Estimate failed — enter the numbers manually instead.';
     }
@@ -1144,7 +1155,7 @@ document.getElementById('estimateFoodBtn').addEventListener('click', async ()=>{
   // Free path: copy a ready-made prompt, let the person paste it into their own ChatGPT app.
   try{
     await navigator.clipboard.writeText(promptText);
-    statusEl.textContent = "Prompt copied! Tap 'Open ChatGPT', paste it in, then type the cal/protein numbers it gives you into the fields above.";
+    statusEl.textContent = `Prompt copied (for ${portion})! Tap 'Open ChatGPT', paste it in, then type the cal/protein numbers it gives you into the fields above.`;
   }catch(err){
     statusEl.textContent = `Couldn't copy automatically — copy this manually: ${promptText}`;
   }
@@ -1155,7 +1166,7 @@ document.getElementById('addManualFood').addEventListener('click', ()=>{
   const cal = Number(document.getElementById('f_cal').value);
   const protein = Number(document.getElementById('f_protein').value) || 0;
   if(!name || !cal) return;
-  logFood(name, cal, protein);
+  logFoodExact(name, cal, protein);
   document.getElementById('f_name').value=''; document.getElementById('f_cal').value=''; document.getElementById('f_protein').value='';
   document.getElementById('estimateStatus').textContent = '';
 });
