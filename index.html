@@ -128,7 +128,7 @@
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
   .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
 
-  button.action{
+  .action{
     font-family:'Poppins',sans-serif;
     font-weight:700;
     font-size:14.5px;
@@ -140,14 +140,22 @@
     width:100%;
     margin-top:14px;
     cursor:pointer;
+    display:block;
+    box-sizing:border-box;
+    -webkit-tap-highlight-color:transparent;
+    outline:none;
   }
-  button.action:active{opacity:0.85;}
-  button.action.ghost{
+  .action:active{opacity:0.85;}
+  .action:focus-visible{outline:2px solid var(--teal);outline-offset:2px;}
+  .action.ghost{
     background:none;
     color:var(--peri);
     border:1.5px solid var(--peri-dim);
   }
-  button.action.small{width:auto;margin-top:0;padding:8px 14px;font-size:13px;}
+  .action.ghost:focus-visible{outline:2px solid var(--peri);outline-offset:2px;}
+  .action.small{width:auto;margin-top:0;padding:8px 14px;font-size:13px;}
+
+  a.action{text-decoration:none;text-align:center;}
 
   .toggle-row{display:flex;background:var(--surface2);border-radius:12px;padding:3px;gap:2px;}
   .toggle-row button{
@@ -371,7 +379,7 @@
         <div><label>Protein (g)</label><input type="number" id="f_protein" placeholder="30"></div>
       </div>
       <button class="action ghost" id="estimateFoodBtn">🤖 Estimate cal/protein for me</button>
-      <a class="action ghost" id="openChatGPTBtn" href="https://chatgpt.com/" target="_blank" rel="noopener" style="display:none;text-decoration:none;text-align:center;">↗ Open ChatGPT</a>
+      <a class="action ghost" id="openChatGPTBtn" href="https://chatgpt.com/" target="_blank" rel="noopener" style="display:none;">↗ Open ChatGPT</a>
       <div class="note" id="estimateStatus" style="margin-top:6px;"></div>
       <button class="action ghost" id="addManualFood">+ Add manual item</button>
 
