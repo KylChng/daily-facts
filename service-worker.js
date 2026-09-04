@@ -1,4 +1,4 @@
-const CACHE = 'daily-facts-v1';
+const CACHE = 'daily-facts-v2';
 const ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', (e) => {
@@ -13,10 +13,18 @@ self.addEventListener('activate', (e) => {
   self.clients.claim();
 });
 
+// Network-first: always try to get the latest version. Only fall back to the
+// cached copy if the device is offline. This avoids ever getting stuck on
+// an old cached version after files are updated on GitHub.
 self.addEventListener('fetch', (e) => {
-  // Only handle same-origin GET requests (app shell); let API calls pass through untouched.
   if (e.request.method !== 'GET' || !e.request.url.startsWith(self.location.origin)) return;
   e.respondWith(
-    caches.match(e.request).then((cached) => cached || fetch(e.request))
+    fetch(e.request)
+      .then((res) => {
+        const resClone = res.clone();
+        caches.open(CACHE).then((c) => c.put(e.request, resClone));
+        return res;
+      })
+      .catch(() => caches.match(e.request))
   );
 });
